@@ -1,14 +1,15 @@
 package xyz.thaihuynh.service
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.*
-import android.os.Bundle
-import android.os.IBinder
-import android.os.Message
-import android.os.Messenger
-import android.os.RemoteException
+import android.content.pm.PackageManager
+import android.os.*
 import android.provider.Settings
-import android.support.v7.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AppCompatActivity
+import android.telecom.TelecomManager
 import android.text.TextUtils
 import android.util.Log
 import kotlinx.android.synthetic.main.activity_main.*
@@ -162,6 +163,14 @@ class MainActivity : AppCompatActivity() {
         remoteLoad.setOnClickListener {
             mRemoteService?.loadFile(FilesRepository.FILE_URL)
         }
+
+        endCall.setOnClickListener{
+            endCall(this)
+        }
+
+        accept.setOnClickListener{
+            acceptCall(this)
+        }
     }
 
     override fun onResume() {
@@ -218,6 +227,79 @@ class MainActivity : AppCompatActivity() {
             }
         }
         return false
+    }
+
+//    private fun requestRole() {
+//        val roleManager = getSystemService(RoleManager::class.java)
+//        val isRoleAvailable = roleManager.isRoleAvailable(RoleManager.ROLE_BROWSER)
+//    }
+
+    @SuppressLint("PrivateApi")
+    fun endCall(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
+            if (telecomManager != null && ContextCompat.checkSelfPermission(context, Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED) {
+                telecomManager.endCall()
+//                telecomManager.acceptRingingCall()
+                return true
+            }
+            return false
+        }
+        //use unofficial API for older Android versions, as written here: https://stackoverflow.com/a/8380418/878126
+        try {
+            val telephonyClass = Class.forName("com.android.internal.telephony.ITelephony")
+            val telephonyStubClass = telephonyClass.classes[0]
+            val serviceManagerClass = Class.forName("android.os.ServiceManager")
+            val serviceManagerNativeClass = Class.forName("android.os.ServiceManagerNative")
+            val getService = serviceManagerClass.getMethod("getService", String::class.java)
+            val tempInterfaceMethod = serviceManagerNativeClass.getMethod("asInterface", IBinder::class.java)
+            val tmpBinder = Binder()
+            tmpBinder.attachInterface(null, "fake")
+            val serviceManagerObject = tempInterfaceMethod.invoke(null, tmpBinder)
+            val retbinder = getService.invoke(serviceManagerObject, "phone") as IBinder
+            val serviceMethod = telephonyStubClass.getMethod("asInterface", IBinder::class.java)
+            val telephonyObject = serviceMethod.invoke(null, retbinder)
+            val telephonyEndCall = telephonyClass.getMethod("endCall")
+            telephonyEndCall.invoke(telephonyObject)
+            return false
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return false
+        }
+    }
+
+    @SuppressLint("PrivateApi")
+    fun acceptCall(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
+            if (telecomManager != null && ContextCompat.checkSelfPermission(context, Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED) {
+//                telecomManager.endCall()O
+                telecomManager.acceptRingingCall()
+                return true
+            }
+            return false
+        }
+        //use unofficial API for older Android versions, as written here: https://stackoverflow.com/a/8380418/878126
+        try {
+            val telephonyClass = Class.forName("com.android.internal.telephony.ITelephony")
+            val telephonyStubClass = telephonyClass.classes[0]
+            val serviceManagerClass = Class.forName("android.os.ServiceManager")
+            val serviceManagerNativeClass = Class.forName("android.os.ServiceManagerNative")
+            val getService = serviceManagerClass.getMethod("getService", String::class.java)
+            val tempInterfaceMethod = serviceManagerNativeClass.getMethod("asInterface", IBinder::class.java)
+            val tmpBinder = Binder()
+            tmpBinder.attachInterface(null, "fake")
+            val serviceManagerObject = tempInterfaceMethod.invoke(null, tmpBinder)
+            val retbinder = getService.invoke(serviceManagerObject, "phone") as IBinder
+            val serviceMethod = telephonyStubClass.getMethod("asInterface", IBinder::class.java)
+            val telephonyObject = serviceMethod.invoke(null, retbinder)
+            val telephonyEndCall = telephonyClass.getMethod("acceptRingingCall")
+            telephonyEndCall.invoke(telephonyObject)
+            return false
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return false
+        }
     }
 
     companion object {
