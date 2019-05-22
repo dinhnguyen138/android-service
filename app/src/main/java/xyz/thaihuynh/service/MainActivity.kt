@@ -237,13 +237,18 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("PrivateApi")
     fun endCall(context: Context): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
-            if (telecomManager != null && ContextCompat.checkSelfPermission(context, Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED) {
-                telecomManager.endCall()
+            try {
+                val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
+                if (telecomManager != null && ContextCompat.checkSelfPermission(context, Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED) {
+                    telecomManager.endCall()
 //                telecomManager.acceptRingingCall()
-                return true
+                    return true
+                }
+                return false
             }
-            return false
+            catch(e: Exception) {
+                Log.e("reject >= P", e.stackTrace.toString());
+            }
         }
         //use unofficial API for older Android versions, as written here: https://stackoverflow.com/a/8380418/878126
         try {
@@ -263,6 +268,7 @@ class MainActivity : AppCompatActivity() {
             telephonyEndCall.invoke(telephonyObject)
             return false
         } catch (e: Exception) {
+//            Log.e("reject < P", e.stackTrace.toString());
             e.printStackTrace()
             return false
         }
@@ -270,14 +276,19 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("PrivateApi")
     fun acceptCall(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
-            if (telecomManager != null && ContextCompat.checkSelfPermission(context, Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
+                if (telecomManager != null && ContextCompat.checkSelfPermission(context, Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED) {
 //                telecomManager.endCall()O
-                telecomManager.acceptRingingCall()
-                return true
+                    telecomManager.acceptRingingCall()
+                    return true
+                }
+                return false
             }
-            return false
+            catch(e: Exception) {
+                Log.e("accept >= P", e.stackTrace.toString());
+            }
         }
         //use unofficial API for older Android versions, as written here: https://stackoverflow.com/a/8380418/878126
         try {
@@ -293,10 +304,11 @@ class MainActivity : AppCompatActivity() {
             val retbinder = getService.invoke(serviceManagerObject, "phone") as IBinder
             val serviceMethod = telephonyStubClass.getMethod("asInterface", IBinder::class.java)
             val telephonyObject = serviceMethod.invoke(null, retbinder)
-            val telephonyEndCall = telephonyClass.getMethod("acceptRingingCall")
+            val telephonyEndCall = telephonyClass.getMethod("answerRingingCall")
             telephonyEndCall.invoke(telephonyObject)
             return false
         } catch (e: Exception) {
+            Log.e("accept < P", e.stackTrace.toString());
             e.printStackTrace()
             return false
         }
